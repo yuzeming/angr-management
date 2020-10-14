@@ -9,7 +9,7 @@ from pyqodeng.core import modes
 from pyqodeng.core import panels
 
 import pyvex
-from angr.analyses.decompiler.structured_codegen import CBinaryOp, CFunctionCall
+from angr.analyses.decompiler.structured_codegen import CBinaryOp, CFunctionCall, CConstant
 from angr.analyses.viscosity.viscosity import Viscosity
 
 from ..widgets.qccode_highlighter import QCCodeHighlighter
@@ -85,12 +85,21 @@ class QCCodeEdit(api.CodeEdit):
 
         mnu = QMenu()
         if isinstance(under_cursor, CBinaryOp) \
+                and under_cursor.tags \
                 and "vex_stmt_idx" in under_cursor.tags \
                 and "vex_block_addr" in under_cursor.tags:
             # operator in selection
             self._selected_node = under_cursor
             mnu.addActions(self.operator_actions)
+        elif isinstance(under_cursor, CConstant) \
+                and under_cursor.tags \
+                and "vex_stmt_idx" in under_cursor.tags \
+                and "vex_block_addr" in under_cursor.tags:
+            # constant in selection
+            self._selected_node = under_cursor
+            mnu.addActions(self.constant_actions)
         if isinstance(under_cursor, CFunctionCall) \
+                and under_cursor.tags \
                 and "vex_block_addr" in under_cursor.tags \
                 and "ins_addr" in under_cursor.tags:
             # function call in selection
@@ -154,6 +163,10 @@ class QCCodeEdit(api.CodeEdit):
         edit_constant = QAction("&Edit constant", self)
         edit_constant.triggered.connect(self._on_edit_constant_clicked)
 
+        self.constant_actions = [
+            edit_constant,
+            self._separator(),
+        ]
         self.operator_actions = [
             edit_operator,
             self._separator(),
