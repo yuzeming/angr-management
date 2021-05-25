@@ -9,9 +9,9 @@ from angr import StateHierarchy
 
 from ..config import Conf
 from ..data.instance import ObjectContainer
-from ..data.jobs import CodeTaggingJob, PrototypeFindingJob, VariableRecoveryJob
+from ..data.jobs import CodeTaggingJob, PrototypeFindingJob, VariableRecoveryJob, InsightsJob
 from .views import (FunctionsView, DisassemblyView, SymexecView, StatesView, StringsView, ConsoleView, CodeView,
-                    InteractionView, PatchesView, DependencyView, ProximityView)
+                    InteractionView, PatchesView, DependencyView, ProximityView, InsightsView)
 from .widgets.qsmart_dockwidget import QSmartDockWidget
 from .view_manager import ViewManager
 
@@ -44,6 +44,7 @@ class Workspace:
 
         self.default_tabs = [
             FunctionsView(self, 'left'),
+            InsightsView(self, 'center'),
             DisassemblyView(self, 'center'),
             ProximityView(self, 'center'),
             CodeView(self, 'center'),
@@ -132,6 +133,20 @@ class Workspace:
         )
 
     def on_function_tagged(self):
+        self.instance.add_job(
+            InsightsJob(
+                on_finish=self.on_insights_collected,
+            )
+        )
+
+    def on_insights_collected(self):
+        # reload insights view
+        view = self.view_manager.first_view_in_category('insights')
+        if view is not None:
+            view: InsightsView
+            view.reload()
+            view.raise_()
+
         # reload disassembly view
         view = self.view_manager.first_view_in_category('disassembly')
         if view is not None:
