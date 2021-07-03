@@ -12,6 +12,7 @@ import angr
 import cle
 import z3
 import zmq
+import pypcode
 
 
 def make_common_options():
@@ -68,6 +69,7 @@ def make_common_options():
         (os.path.join(os.path.dirname(unicorn.__file__), "lib"), "unicorn/lib"),
         (capstone._path, "capstone/lib"),
         (os.path.join(os.path.dirname(z3.__file__), "lib"), "z3/lib"),
+        (os.path.join(pypcode.SPECFILES_DIR), "pypcode/processors"),
     ]
 
     if sys.platform == "linux":
