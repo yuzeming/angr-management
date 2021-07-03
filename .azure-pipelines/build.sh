@@ -10,7 +10,7 @@ pip install git+https://github.com/angr/pyvex.git#egg=pyvex
 pip install git+https://github.com/angr/cle.git#egg=cle
 pip install git+https://github.com/angr/claripy.git#egg=claripy
 pip install git+https://github.com/angr/ailment.git#egg=ailment
-pip install git+https://github.com/angr/angr.git#egg=angr
+pip install git+https://github.com/angr/angr.git#egg=angr[pcode]
 if [[ "$OSTYPE" == "linux-gnu" ]]; then
     pip install keystone-engine --no-binary keystone-engine
     pip install git+https://github.com/angr/archr.git#egg=archr
