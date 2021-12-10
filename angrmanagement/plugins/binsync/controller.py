@@ -260,6 +260,8 @@ class BinsyncController:
             if self.instance.original_binary_path:
                 source_root = os.path.dirname(self.instance.original_binary_path)
             self.instance.project.analyses.ImportSourceCode(func, flavor='source', source_root=source_root)
+            self.instance.project.analyses.ImportSourceCodeCParser(func, flavor='source_cparser', source_root=source_root)
+
 
         # grab newly cached pseudocode
         decomp = self.instance.kb.structured_code[(func.addr, 'pseudocode')].codegen

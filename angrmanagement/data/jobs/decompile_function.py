@@ -1,7 +1,7 @@
 import os.path
 
 from .job import Job
-
+import angr.analyses.decompiler.structured_codegen.dwarf_import_cparser
 
 class DecompileFunctionJob(Job):
     def __init__(self, function, on_finish=None, **kwargs):
@@ -27,6 +27,13 @@ class DecompileFunctionJob(Job):
         inst.project.analyses.ImportSourceCode(
             self.function,
             flavor='source',
+            progress_callback=self._progress_callback,
+            source_root=source_root,
+        )
+
+        inst.project.analyses.ImportSourceCodeCParser(
+            self.function,
+            flavor='source_cparser',
             progress_callback=self._progress_callback,
             source_root=source_root,
         )

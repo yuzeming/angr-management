@@ -367,6 +367,8 @@ class CodeView(BaseView):
         self._view_selector.addItems(available)
 
     def _on_view_selector_changed(self, index):
+        if self._function is None:
+            return
         key = (self._function.addr, self._view_selector.itemText(index))
         self.codegen.am_obj = self.workspace.instance.kb.structured_code[key].codegen
         self.codegen.am_event()
