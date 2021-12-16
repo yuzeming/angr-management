@@ -65,6 +65,57 @@ class VaildLineNumberPanel(LineNumberPanel):
             painter.drawText(-3, top, width, height,
                              QtCore.Qt.AlignRight, str(line + 1))
 
+class BreakpointPanel(MarkerPanel):
+    def __init__(self):
+        super().__init__()
+        self.add_marker_requested.connect(self.add_marker_fn)
+        #self.edit_marker_requested.connect(self.edit_marker_fn)
+        self.remove_marker_requested.connect(self.remove_marker_fn)
+        
+    def add_marker_fn(self, line):
+        editor = self.editor # type: SourceCodeViewer
+        editor.current_line = line + 1
+        if editor.current_line not in editor._valid_line:
+            return
+        menu = QMenu()
+        menu.addAction("Add Find", self.add_find)
+        menu.addAction("Add Avoid", self.add_avoid)
+        address_list = editor.viewer.main.line_to_addr[(editor.file.path, editor.current_line)]
+        if address_list:
+            jump_menu = menu.addMenu("Jump to")
+            for addr in address_list:
+                jump_menu.addAction("0x%x" % addr, lambda addr=addr: editor.jump_to(addr))
+        menu.exec_(QCursor.pos())
+
+    def remove_marker_fn(self, line):
+        editor = self.editor # type: SourceCodeViewer
+        editor.current_line = line + 1
+        editor.viewer.remove_point(editor.file.path, editor.current_line)
+        lst = self.marker_for_line(line)
+        for m in lst:
+            self.remove_marker(m)
+
+    def edit_marker_fn(self, line):
+        editor = self.editor # type: SourceCodeViewer
+        editor.current_line = line + 1
+        menu = QMenu()
+        menu.addAction("Edit Condition", editor.edit_cond)
+        menu.exec_(QCursor.pos())
+
+    def add_find(self):
+        editor = self.editor # type: SourceCodeViewer
+        icon = self.style().standardIcon(QStyle.SP_FileDialogContentsView)
+        desc = editor.viewer.add_point(editor.file.path, editor.current_line, "find")
+        self.add_marker(
+            Marker(editor.current_line-1, icon, desc))
+
+    def add_avoid(self):
+        editor = self.editor # type: SourceCodeViewer
+        icon = self.style().standardIcon(QStyle.SP_BrowserStop)
+        desc = editor.viewer.add_point(
+            editor.file.path, editor.current_line, "avoid")
+        self.add_marker(Marker(editor.current_line-1, icon, desc))
+
 
 class SourceCodeViewer(CodeEdit):
     """
@@ -79,70 +130,18 @@ class SourceCodeViewer(CodeEdit):
 
         self._valid_line = None
         self.linenumber_panel = VaildLineNumberPanel()
-        self.breakpoint_panel = MarkerPanel()
-        self.breakpoint_panel.add_marker_requested.connect(self.add_marker_fn)
-        self.breakpoint_panel.edit_marker_requested.connect(
-            self.edit_marker_fn)
-        self.breakpoint_panel.remove_marker_requested.connect(
-            self.remove_marker_fn)
-
-        #self.state_panel = MarkerPanel()
+        self.breakpoint_panel = BreakpointPanel()
 
         self.panels.append(self.linenumber_panel)
         self.panels.append(self.breakpoint_panel)
-        # self.panels.append(self.state_panel)
 
     def set_valid_line(self, valid_line):
         self.linenumber_panel._valid_line = valid_line
         self._valid_line = valid_line
         self.update()
 
-    def updateState(self, state_counter):
-        self.state_panel.updateState(state_counter)
-
-    def add_find(self):
-        icon = self.style().standardIcon(QStyle.SP_FileDialogContentsView)
-        desc = self.viewer.add_point(self.file.path, self.current_line, "find")
-        self.breakpoint_panel.add_marker(
-            Marker(self.current_line-1, icon, desc))
-
-    def add_avoid(self):
-        icon = self.style().standardIcon(QStyle.SP_BrowserStop)
-        desc = self.viewer.add_point(
-            self.file.path, self.current_line, "avoid")
-        self.breakpoint_panel.add_marker(
-            Marker(self.current_line-1, icon, desc))
-
     def jump_to(self,addr):
         self.viewer.workspace.jump_to(addr)
-
-    def add_marker_fn(self, line):
-        self.current_line = line + 1
-        if self.current_line not in self._valid_line:
-            return
-        menu = QMenu()
-        menu.addAction("Add Find", self.add_find)
-        menu.addAction("Add Avoid", self.add_avoid)
-        address_list = self.viewer.main.line_to_addr[(self.file.path, self.current_line)]
-        if address_list:
-            jump_menu = menu.addMenu("Jump to")
-            for addr in address_list:
-                jump_menu.addAction("0x%x" % addr, lambda addr=addr: self.jump_to(addr))
-        menu.exec_(QCursor.pos())
-
-    def remove_marker_fn(self, line):
-        self.current_line = line + 1
-        self.viewer.remove_point(self.file.path, self.current_line)
-        lst = self.breakpoint_panel.marker_for_line(line)
-        for m in lst:
-            self.breakpoint_panel.remove_marker(m)
-
-    def edit_marker_fn(self, line):
-        self.current_line = line + 1
-        menu = QMenu()
-        menu.addAction("Edit Condition", self.edit_cond)
-        menu.exec_(QCursor.pos())
-
     def edit_cond(self):
         pass
 

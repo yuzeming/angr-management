@@ -1,15 +1,16 @@
 from typing import TYPE_CHECKING
 
 from PySide2.QtCore import Qt, QEvent
-from PySide2.QtGui import QTextCharFormat
-from PySide2.QtWidgets import QMenu, QAction, QInputDialog, QLineEdit, QApplication
+from PySide2.QtGui import QCursor, QTextCharFormat, QPainter, QPen
+from PySide2.QtWidgets import QMenu, QAction, QInputDialog, QLineEdit, QApplication, QStyle
 
-from pyqodeng.core import api
-from pyqodeng.core import modes
-from pyqodeng.core import panels
+from pyqodeng.core import api, modes, panels, panels
+from pyqodeng.core.api.panel import Panel
+from pyqodeng.core.api.utils import drift_color
 
 from angr.sim_variable import SimVariable, SimTemporaryVariable
 from angr.analyses.decompiler.structured_codegen.c import CBinaryOp, CVariable, CFunctionCall, CFunction, CStructField
+from pyqodeng.core.panels.marker import Marker
 
 from ..documents.qcodedocument import QCodeDocument
 from ..dialogs.rename_node import RenameNode
@@ -35,6 +36,88 @@ class ColorSchemeIDA(api.ColorScheme):
         self.formats['function'] = function_format
 
 
+class VaildLineNumberPanel(panels.LineNumberPanel):
+    """
+    The color of line numbers indicates if any address associated with this line.
+    The vaild lineno are black, which means we could set a breakpoint on it and
+    the invaild are grey.
+    """
+
+    def __init__(self, valid_line=None):
+        super().__init__()
+        self._valid_line = valid_line or set()
+
+    def paintEvent(self, event):
+        # Paints the line numbers
+        self._line_color_u = drift_color(self._background_brush.color(), 250)
+        self._line_color_s = drift_color(self._background_brush.color(), 280)
+        Panel.paintEvent(self, event)
+        if not self.isVisible():
+            return
+        painter = QPainter(self)
+        # get style options (font, size)
+        width = self.width()
+        height = self.editor.fontMetrics().height()
+        font = self.editor.font()
+        bold_font = self.editor.font()
+        bold_font.setBold(True)
+        pen = QPen(self._line_color_u)
+        pen_selected = QPen(self._line_color_s)
+        painter.setFont(font)
+        # draw every visible blocks
+        for top, line, _block in self.editor.visible_blocks:
+            if line+1 in self._valid_line:
+                painter.setPen(pen_selected)
+                painter.setFont(bold_font)
+            else:
+                painter.setPen(pen)
+                painter.setFont(font)
+            painter.drawText(-3, top, width, height,
+                             Qt.AlignRight, str(line + 1))
+
+class BreakpointPanel(panels.MarkerPanel):
+    def __init__(self):
+        super().__init__()
+        self.current_line = 0
+        self.add_marker_requested.connect(self.add_marker_fn)
+        self.remove_marker_requested.connect(self.remove_marker_fn)
+        
+    def add_marker_fn(self, line):
+        editor = self.editor # type: QCCodeEdit
+        self.current_line = line + 1
+        if not editor.valid_line(self.current_line):
+            return
+        menu = QMenu()
+        menu.addAction("Add Find", self.add_find)
+        menu.addAction("Add Avoid", self.add_avoid)
+        address_list = editor.viewer.main.line_to_addr[(editor.file.path, self.current_line)]
+        if address_list:
+            jump_menu = menu.addMenu("Jump to")
+            for addr in address_list:
+                jump_menu.addAction("0x%x" % addr, lambda addr=addr: editor.jump_to(addr))
+        menu.exec_(QCursor.pos())
+
+    def remove_marker_fn(self, line):
+        editor = self.editor # type: QCCodeEdit
+        current_line = line + 1
+        editor.viewer.remove_point(editor.file.path, current_line)
+        lst = self.marker_for_line(line)
+        for m in lst:
+            self.remove_marker(m)
+
+    def add_find(self):
+        editor = self.editor # type: QCCodeEdit
+        icon = self.style().standardIcon(QStyle.SP_FileDialogContentsView)
+        desc = editor.viewer.add_point(editor.file.path, self.current_line, "find")
+        self.add_marker(Marker(self.current_line-1, icon, desc))
+
+    def add_avoid(self):
+        editor = self.editor # type: QCCodeEdit
+        icon = self.style().standardIcon(QStyle.SP_BrowserStop)
+        desc = editor.viewer.add_point(editor.file.path, self.current_line, "avoid")
+        self.add_marker(Marker(self.current_line-1, icon, desc))
+
+
 class QCCodeEdit(api.CodeEdit):
     """
     A subclass of pyqodeng's CodeEdit, specialized to handle the kinds of textual interaction expected of the pseudocode
@@ -44,8 +127,8 @@ class QCCodeEdit(api.CodeEdit):
         super().__init__(create_default_actions=True)
 
         self._code_view: 'CodeView' = code_view
-
-        self.panels.append(panels.LineNumberPanel())
+        self.panels.append(BreakpointPanel())
+        self.panels.append(VaildLineNumberPanel())
         self.panels.append(panels.FoldingPanel())
 
         self.modes.append(modes.SymbolMatcherMode())
