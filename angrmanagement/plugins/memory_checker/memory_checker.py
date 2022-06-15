@@ -1,9 +1,9 @@
 from typing import List, TYPE_CHECKING
 import types
 
-from angr import options
+from angr import AngrError, SimError, SimulationManager, options
 from angr.state_plugins.sim_action import SimAction
-from angr.state_plugins.heap import SimHeapPTMalloc
+from angr.state_plugins.heap import SimHeapPTMalloc, PTChunk
 from angr.errors import SimSegfaultException
 from sortedcontainers.sorteddict import SortedDict
 from angrmanagement.plugins.base_plugin import BasePlugin
@@ -23,18 +23,21 @@ class MemoryChecker(BasePlugin):
         self.simgrs = self.workspace.instance.simgrs
         self.simgrs.am_subscribe(self.install_simgrs_option)
         
-    def handle_project_initialization(self):
+    # def handle_project_initialization(self):
         
-        def _handle_exception(self_simos, successors, engine, exception):
-            if not isinstance(exception, SimSegfaultException):
-                raise exception
+    #     def _handle_exception(self_simos, successors, engine, exception):
+    #         if not isinstance(exception, SimSegfaultException):
+    #             raise exception
             
-        simos = self.workspace.instance.project.simos
-        simos.handle_exception = types.MethodType(_handle_exception, simos)
+    #     simos = self.workspace.instance.project.simos
+    #     simos.handle_exception = types.MethodType(_handle_exception, simos)
 
     def install_simgrs_option(self, **kwargs):
+        if kwargs["scr"] != "new_path":
+            return
+        sigmr = kwargs["sigmr"] # type: SimulationManager
+        sigmr._resilience = (AngrError, SimError)
         
-
     def install_state_plugin(self, **kwargs):
         if kwargs.get("src",None) != "new":
             return
@@ -47,11 +50,12 @@ class MemoryChecker(BasePlugin):
         return  state.solver.eval(ptr)
 
     @staticmethod
-    def check_address_is_free(state: 'SimState', ptr_list: 'List[SimAction]'):
+    def check_address(state: 'SimState', ptr_list: 'List[SimAction]'):
         ptr_dict = [(MemoryChecker.eval_ptr(state, x.addr.ast), x) for x in ptr_list]
         ptr_dict = SortedDict(ptr_dict)
         len_list = len(ptr_dict)
-        for chunk in state.heap.free_chunks():
+        chunk:PTChunk
+        for chunk in state.heap.chunks(): 
             base = chunk.base
             size = state.solver.eval(chunk.get_size())
             p = ptr_dict.bisect_left(base)
@@ -77,7 +81,7 @@ class MemoryChecker(BasePlugin):
             if act.type=='mem' and \
                 (act.sim_procedure is None or act.sim_procedure.display_name not in MemoryChecker.AllowList):
                 address_list.append(act)
-        return MemoryChecker.check_address_is_free(state, address_list)
+        return MemoryChecker.check_address(state, address_list)
 
     def step_callback(self, simgr):
         simgr.move("active","use_after_free",self.check_use_after_free)

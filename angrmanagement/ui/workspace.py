@@ -447,7 +447,7 @@ class Workspace:
         simgr = inst.project.factory.simulation_manager(state, hierarchy=hierarchy)
         simgr_container = ObjectContainer(simgr, name=state_name)
         inst.simgrs.append(simgr_container)
-        inst.simgrs.am_event(src='new_path')
+        inst.simgrs.am_event(src='new_path', simgr=simgr_container)
 
         if view is None:
             view = self._get_or_create_symexec_view()
