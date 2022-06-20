@@ -70,7 +70,6 @@ class MemoryChecker(BasePlugin):
                 break
             
             size = state.solver.eval(chunk.get_size())
-            print("{:x} {:x} - {:x}".format(addr, chunk.base, size))
             
             err_str = ""
             if chunk.is_free():
