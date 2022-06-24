@@ -51,7 +51,7 @@ class MemoryChecker(BasePlugin):
             return
         state = kwargs.get("state") # type: SimState
         state.register_plugin('heap', SimHeapPTMallocWithRedzone())
-        state.options.update({options.TRACK_MEMORY_ACTIONS})
+        state.options.update({options.TRACK_MEMORY_ACTIONS, options.ZERO_FILL_UNCONSTRAINED_MEMORY, options.ZERO_FILL_UNCONSTRAINED_REGISTERS})
         
     def check_address(self, state: 'SimState', act_list: 'List[SimActionData]'):
         act_list = sorted(act_list, key=lambda act: state.solver.eval(act.addr.ast))
@@ -64,7 +64,6 @@ class MemoryChecker(BasePlugin):
             
             while chunk is not None and chunk.base + state.solver.eval(chunk.get_size()) <= addr:
                 chunk = chunk.next_chunk()
-            
             
             if chunk is None:
                 break
