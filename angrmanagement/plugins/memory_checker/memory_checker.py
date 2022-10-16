@@ -79,7 +79,7 @@ class MemoryChecker(BasePlugin):
                 err_str = "\n=== Out-of-Bound(High) ===\nMemory Address:{:#x}\nInstrument Address:{:#x}\n".format(addr, act.ins_addr)
             
             if err_str and addr_to_line and act.ins_addr in addr_to_line:
-                loc = self.addr_to_line[act.ins_addr]
+                loc = addr_to_line[act.ins_addr]
                 err_str += "Code Line No: {}:{}\n".format(loc[0],loc[1]) 
 
             if err_str:
