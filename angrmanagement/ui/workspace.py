@@ -514,7 +514,7 @@ class Workspace:
 
         inst = self.instance
         hierarchy = StateHierarchy()
-        simgr = inst.project.factory.simulation_manager(state, hierarchy=hierarchy)
+        simgr = inst.project.factory.simulation_manager(state, save_unconstrained=True, hierarchy=hierarchy)
         simgr_container = ObjectContainer(simgr, name=state_name)
         inst.simgrs.append(simgr_container)
         inst.simgrs.am_event(src='new_path')
